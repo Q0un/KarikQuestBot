@@ -1,1 +1,12 @@
-[{"username":"Qqun7","state":"NOT_READY"}]
+[
+  {
+    "username": "Qqun7",
+    "state": "READY",
+    "chatId": "303600024"
+  },
+  {
+    "username": "spaceleo",
+    "state": "READY",
+    "chatId": "972629268"
+  }
+]

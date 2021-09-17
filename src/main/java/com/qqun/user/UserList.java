@@ -10,6 +10,10 @@ import java.util.ArrayList;
 
 public class UserList extends ArrayList<User> {
 
+    public final void addUser(String username, String chatId) {
+        add(new User(username, chatId));
+    }
+
     public final User findByName(String username) {
         for (User user : this) {
             if (user.getUsername().equals(username)) {
@@ -28,6 +32,5 @@ public class UserList extends ArrayList<User> {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 }
