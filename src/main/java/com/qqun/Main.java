@@ -28,6 +28,11 @@ public class Main {
                     case "startQuest":
                         bot.startQuest();
                         break;
+                    case "move":
+                        String username = scanner.next();
+                        int roomId = scanner.nextInt();
+                        bot.moveUserToGroup(username, roomId);
+                        break;
                 }
             }
         } catch (TelegramApiException e) {

@@ -1,13 +1,17 @@
 package com.qqun.bot;
 
+import com.fasterxml.jackson.databind.type.ArrayType;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
+import com.qqun.room.Room;
 import com.qqun.user.User;
 import com.qqun.user.UserList;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage;
+import org.telegram.telegrambots.meta.api.methods.groupadministration.*;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.ChatInviteLink;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -16,6 +20,7 @@ import javax.swing.text.StyledEditorKit;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Properties;
 
 public class Bot extends TelegramLongPollingBot {
@@ -23,6 +28,7 @@ public class Bot extends TelegramLongPollingBot {
 
     private final Properties properties = new Properties();
     private final UserList users;
+    private final ArrayList<Room> rooms;
     private State state;
 
     public Bot() {
@@ -33,7 +39,19 @@ public class Bot extends TelegramLongPollingBot {
             e.printStackTrace();
         }
         users = loadUsers();
+        rooms = loadRooms();
         state = State.NOT_STARTED;
+    }
+
+    private ArrayList<Room> loadRooms() {
+        Gson gson = new Gson();
+        try {
+            JsonReader reader = new JsonReader(new FileReader("rooms.json"));
+            return gson.fromJson(reader, new TypeToken<ArrayList<Room>>(){}.getType());
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private UserList loadUsers() {
@@ -68,10 +86,10 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendMsg(String chatId, String message) {
+    private void sendMsg(User user, String message) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.enableMarkdown(true);
-        sendMessage.setChatId(chatId);
+        sendMessage.setChatId(user.getChatId());
         sendMessage.setText(message);
         try {
             execute(sendMessage);
@@ -80,9 +98,9 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    private void forwardMsg(String chatId, Message message) {
+    private void forwardMsg(User user, Message message) {
         ForwardMessage forwardMessage = new ForwardMessage();
-        forwardMessage.setChatId(chatId);
+        forwardMessage.setChatId(user.getChatId());
         forwardMessage.setMessageId(message.getMessageId());
         forwardMessage.setFromChatId(message.getChatId().toString());
         try {
@@ -92,54 +110,114 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
+    private void moveUserToGroup(User user, Room room) {
+        for (Room roomId : rooms) {
+            BanChatMember banChatMember = new BanChatMember();
+            banChatMember.setChatId(roomId.getChatId());
+            banChatMember.setUserId(user.getUserId());
+            try {
+                execute(banChatMember);
+            } catch (TelegramApiException e) {
+                e.printStackTrace();
+            }
+        }
+        UnbanChatMember unbanChatMember = new UnbanChatMember();
+        unbanChatMember.setChatId(room.getChatId());
+        unbanChatMember.setUserId(user.getUserId());
+        try {
+            execute(unbanChatMember);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+        sendMsg(user, getChatInviteLink(room));
+    }
+
+    public void moveUserToGroup(String username, int roomId) {
+        User user = users.findByName(username);
+        if (user == null) {
+            return;
+        }
+        Room room = rooms.get(roomId);
+        if (room == null) {
+            return;
+        }
+        moveUserToGroup(user, room);
+    }
+
+    public String getChatInviteLink(Room room) {
+        CreateChatInviteLink createChatInviteLink = new CreateChatInviteLink();
+        createChatInviteLink.setChatId(room.getChatId());
+        try {
+            ChatInviteLink chatInviteLink = execute(createChatInviteLink);
+            return chatInviteLink.getInviteLink();
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+            return "";
+        }
+    }
+
     public final void startQuest() {
         state = State.STARTED;
+        for (User user : users) {
+            sendMsg(user, "Квест начался! Все появляются в нашем мире:");
+            if (user.getState() != User.State.ADMIN) {
+                moveUserToGroup(user, rooms.get(0));
+            }
+        }
     }
 
     private void handleIncomingMessage(Message message) {
-        String username = message.getFrom().getUserName();
-        User user = users.findByName(username);
-        String text = message.getText();
-        String chatId = message.getChatId().toString();
-        if (state == State.NOT_STARTED) {
-            if (user != null && user.getState() == User.State.NEW_USER) {
-                if (text.equals(properties.getProperty("passwd"))) {
-                    sendMsg(chatId, "О, привет! Раз ты тут, то возможно квест скоро начнется :)");
-                    user.makeReady();
-                } else {
-                    sendMsg(chatId, "Извини, но пароль неверный :(");
+        if (message.isUserMessage()) {
+            String username = message.getFrom().getUserName();
+            User user = users.findByName(username);
+            long userId = message.getFrom().getId();
+            String text = message.getText();
+            String chatId = message.getChatId().toString();
+            if (state == State.NOT_STARTED) {
+                if (user != null && user.getState() == User.State.NEW_USER) {
+                    if (text.equals(properties.getProperty("passwd"))) {
+                        sendMsg(user, "О, привет! Раз ты тут, то возможно квест скоро начнется :)");
+                        user.makeReady();
+                    } else {
+                        sendMsg(user, "Извини, но пароль неверный :(");
+                    }
                 }
-            }
-            if (text.equals("/start")) {
-                if (user == null) {
-                    sendMsg(chatId, "Введи пароль чтобы зарегаться на квест!");
-                    users.addUser(username, chatId);
-                } else if (user.getState() == User.State.NOT_READY) {
-                    sendMsg(chatId, "О, привет! Раз ты тут, то возможно квест скоро начнется :)");
-                    user.makeReady();
+                if (text.equals("/start")) {
+                    if (user == null) {
+                        user = users.addUser(username, chatId, userId);
+                        sendMsg(user, "Введи пароль чтобы зарегаться на квест!");
+                    } else if (user.getState() == User.State.NOT_READY) {
+                        sendMsg(user, "О, привет! Раз ты тут, то возможно квест скоро начнется :)");
+                        user.makeReady();
+                    }
                 }
-            }
-        } else {
-            if (user == null || user.getState() == User.State.NOT_READY) {
-                sendMsg(chatId, "Извини, но квест уже начался :( Возможно поучаствуешь в следующий раз!");
             } else {
-                if (user.getUsername().equals("Qqun7")) {
-                    if (message.isReply()) {
-                        Message source = message.getReplyToMessage();
-                        if (source.getForwardFrom() == null) {
-                            sendMsg(properties.getProperty("myChatId"), "Надо ответить на одно из сообщений пользователей.");
+                if (user == null) {
+                    user = new User(username, chatId, userId);
+                    sendMsg(user, "Извини, но квест уже начался :( Возможно поучаствуешь в следующий раз!");
+                } else if (user.getState() == User.State.NOT_READY) {
+                    sendMsg(user, "Извини, но квест уже начался :( Возможно поучаствуешь в следующий раз!");
+                } else {
+                    if (user.getState() == User.State.ADMIN) {
+                        if (message.isReply()) {
+                            Message source = message.getReplyToMessage();
+                            if (source.getForwardFrom() == null) {
+                                sendMsg(users.get(0), "Надо ответить на одно из сообщений пользователей.");
+                            } else {
+                                User userFrom = users.findByName(source.getForwardFrom().getUserName());
+                                assert userFrom != null;
+                                sendMsg(userFrom, message.getText());
+                            }
                         } else {
-                            User userFrom = users.findByName(source.getForwardFrom().getUserName());
-                            assert userFrom != null;
-                            sendMsg(userFrom.getChatId(), message.getText());
+                            sendMsg(users.get(0), "Надо ответить на одно из сообщений пользователей.");
                         }
                     } else {
-                        sendMsg(properties.getProperty("myChatId"), "Надо ответить на одно из сообщений пользователей.");
+                        forwardMsg(users.get(0), message);
                     }
-                } else {
-                    forwardMsg(properties.getProperty("myChatId"), message);
                 }
             }
+        } else if (message.isSuperGroupMessage()) {
+            System.out.println(message.getChatId() + ": " + message.getText());
         }
     }
 }

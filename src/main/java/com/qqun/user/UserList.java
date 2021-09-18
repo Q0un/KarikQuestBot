@@ -10,8 +10,10 @@ import java.util.ArrayList;
 
 public class UserList extends ArrayList<User> {
 
-    public final void addUser(String username, String chatId) {
-        add(new User(username, chatId));
+    public final User addUser(String username, String chatId, long userId) {
+        User user = new User(username, chatId, userId);
+        add(user);
+        return user;
     }
 
     public final User findByName(String username) {
