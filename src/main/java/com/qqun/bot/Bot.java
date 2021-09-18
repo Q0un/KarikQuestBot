@@ -159,7 +159,7 @@ public class Bot extends TelegramLongPollingBot {
     public final void startQuest() {
         state = State.STARTED;
         for (User user : users) {
-            sendMsg(user, "Квест начался! Все появляются в нашем мире:");
+            sendMsg(user, "Ролевка началась! Все появляются в нашем мире:");
             if (user.getState() != User.State.ADMIN) {
                 moveUserToGroup(user, rooms.get(0));
             }
@@ -176,7 +176,7 @@ public class Bot extends TelegramLongPollingBot {
             if (state == State.NOT_STARTED) {
                 if (user != null && user.getState() == User.State.NEW_USER) {
                     if (text.equals(properties.getProperty("passwd"))) {
-                        sendMsg(user, "О, привет! Раз ты тут, то возможно квест скоро начнется :)");
+                        sendMsg(user, "О, привет! Раз ты тут, то возможно ролевка скоро начнется :)");
                         user.makeReady();
                     } else {
                         sendMsg(user, "Извини, но пароль неверный :(");
@@ -185,18 +185,18 @@ public class Bot extends TelegramLongPollingBot {
                 if (text.equals("/start")) {
                     if (user == null) {
                         user = users.addUser(username, chatId, userId);
-                        sendMsg(user, "Введи пароль чтобы зарегаться на квест!");
+                        sendMsg(user, "Введи пароль чтобы зарегаться на ролевку!");
                     } else if (user.getState() == User.State.NOT_READY) {
-                        sendMsg(user, "О, привет! Раз ты тут, то возможно квест скоро начнется :)");
+                        sendMsg(user, "О, привет! Раз ты тут, то возможно ролевка скоро начнется :)");
                         user.makeReady();
                     }
                 }
             } else {
                 if (user == null) {
                     user = new User(username, chatId, userId);
-                    sendMsg(user, "Извини, но квест уже начался :( Возможно поучаствуешь в следующий раз!");
+                    sendMsg(user, "Извини, но ролевка уже началась :( Возможно поучаствуешь в следующий раз!");
                 } else if (user.getState() == User.State.NOT_READY) {
-                    sendMsg(user, "Извини, но квест уже начался :( Возможно поучаствуешь в следующий раз!");
+                    sendMsg(user, "Извини, но ролевка уже началась :( Возможно поучаствуешь в следующий раз!");
                 } else {
                     if (user.getState() == User.State.ADMIN) {
                         if (message.isReply()) {
