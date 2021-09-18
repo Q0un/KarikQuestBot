@@ -29,7 +29,13 @@ public class UserList extends ArrayList<User> {
         try {
             Writer writer = new FileWriter("users.json");
             Gson gson = new Gson();
-            gson.toJson(this, writer);
+            UserList saving = new UserList();
+            for (User user : this) {
+                if (user.getState() != User.State.NEW_USER) {
+                    saving.add(user);
+                }
+            }
+            gson.toJson(saving, writer);
             writer.close();
         } catch (IOException e) {
             e.printStackTrace();
