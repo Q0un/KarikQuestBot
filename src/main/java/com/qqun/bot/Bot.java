@@ -1,6 +1,5 @@
 package com.qqun.bot;
 
-import com.fasterxml.jackson.databind.type.ArrayType;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
@@ -11,12 +10,12 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.*;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.objects.ChatInviteLink;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import javax.swing.text.StyledEditorKit;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -147,6 +146,7 @@ public class Bot extends TelegramLongPollingBot {
     public String getChatInviteLink(Room room) {
         CreateChatInviteLink createChatInviteLink = new CreateChatInviteLink();
         createChatInviteLink.setChatId(room.getChatId());
+        createChatInviteLink.setMemberLimit(1);
         try {
             ChatInviteLink chatInviteLink = execute(createChatInviteLink);
             return chatInviteLink.getInviteLink();
@@ -217,7 +217,16 @@ public class Bot extends TelegramLongPollingBot {
                 }
             }
         } else if (message.isSuperGroupMessage()) {
-            System.out.println(message.getChatId() + ": " + message.getText());
+            if (!message.hasText() && message.getFrom().getIsBot()) {
+                DeleteMessage deleteMessage = new DeleteMessage();
+                deleteMessage.setMessageId(message.getMessageId());
+                deleteMessage.setChatId(message.getChatId().toString());
+                try {
+                    execute(deleteMessage);
+                } catch (TelegramApiException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 }
