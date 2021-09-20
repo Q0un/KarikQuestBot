@@ -2,10 +2,10 @@ package com.qqun;
 
 import com.qqun.bot.Bot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
-import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
+import javax.validation.constraints.Null;
 import java.util.Scanner;
 
 public class Main {
@@ -17,7 +17,8 @@ public class Main {
             telegramBotsApi.registerBot(bot);
             Scanner scanner = new Scanner(System.in);
             while (true) {
-                String inp = scanner.nextLine();
+                String inp = scanner.next();
+                String username;
                 switch (inp) {
                     case "save":
                         bot.saveData();
@@ -28,10 +29,23 @@ public class Main {
                     case "startQuest":
                         bot.startQuest();
                         break;
+                    case "prestart":
+                        bot.prestartQuest();
+                        break;
                     case "move":
-                        String username = scanner.next();
+                        username = scanner.next();
                         int roomId = scanner.nextInt();
                         bot.moveUserToGroup(username, roomId);
+                        break;
+                    case "setRole":
+                        username = scanner.next();
+                        String group = scanner.next();
+                        int person = scanner.nextInt();
+                        try {
+                            bot.setRole(username, group, person);
+                        } catch (NullPointerException e) {
+                            e.printStackTrace();
+                        }
                         break;
                 }
             }

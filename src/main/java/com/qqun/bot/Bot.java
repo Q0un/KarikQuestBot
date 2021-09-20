@@ -3,7 +3,9 @@ package com.qqun.bot;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
+import com.qqun.bot.keyboard.Keyboard;
 import com.qqun.room.Room;
+import com.qqun.user.Role;
 import com.qqun.user.User;
 import com.qqun.user.UserList;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -11,23 +13,26 @@ import org.telegram.telegrambots.meta.api.methods.ForwardMessage;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.*;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.ChatInviteLink;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import javax.validation.constraints.Null;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 public class Bot extends TelegramLongPollingBot {
-    private enum State {NOT_STARTED, STARTED}
+    private enum State {NOT_STARTED, PRESTARTED, STARTED}
 
     private final Properties properties = new Properties();
     private final UserList users;
-    private final ArrayList<Room> rooms;
+    private final List<Room> rooms;
     private State state;
 
     public Bot() {
@@ -82,6 +87,50 @@ public class Bot extends TelegramLongPollingBot {
     public final void onUpdateReceived(Update update) {
         if (update.hasMessage()) {
             handleIncomingMessage(update.getMessage());
+        } else if (update.hasCallbackQuery()) {
+            handleIncomingCallbackQuery(update.getCallbackQuery());
+        }
+    }
+
+    public void moveUserToGroup(String username, int roomId) {
+        User user = users.findByName(username);
+        Room room = rooms.get(roomId);
+        try {
+            moveUserToGroup(user, room);
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public final void prestartQuest() {
+        for (User user : users) {
+            sendMsg(user, "Ролевка скоро начнется, пока прочитай правила:");
+            sendMsg(user, "https://...");
+        }
+    }
+
+    public final void startQuest() {
+        state = State.STARTED;
+        for (User user : users) {
+            sendMsg(user, "Ролевка началась! Все появляются в нашем мире:");
+            user.init();
+            if (user.getRole().getGroup() != Role.Group.ADMIN) {
+                moveUserToGroup(user, rooms.get(0));
+                sendKeyboard(user);
+            }
+        }
+    }
+
+    public final void setRole(String username, String group, int person) throws NullPointerException {
+        User user = users.findByName(username);
+        if (user == null) {
+            throw new NullPointerException();
+        }
+        try {
+            Role role = new Role(group, person);
+            user.setRole(role);
+        } catch (NullPointerException | IllegalArgumentException e) {
+            e.printStackTrace();
         }
     }
 
@@ -128,22 +177,11 @@ public class Bot extends TelegramLongPollingBot {
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
-        sendMsg(user, getChatInviteLink(room));
+        String message = "Проходи:\n" + getChatInviteLink(room);
+        sendMsg(user, message);
     }
 
-    public void moveUserToGroup(String username, int roomId) {
-        User user = users.findByName(username);
-        if (user == null) {
-            return;
-        }
-        Room room = rooms.get(roomId);
-        if (room == null) {
-            return;
-        }
-        moveUserToGroup(user, room);
-    }
-
-    public String getChatInviteLink(Room room) {
+    private String getChatInviteLink(Room room) {
         CreateChatInviteLink createChatInviteLink = new CreateChatInviteLink();
         createChatInviteLink.setChatId(room.getChatId());
         createChatInviteLink.setMemberLimit(1);
@@ -156,13 +194,31 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    public final void startQuest() {
-        state = State.STARTED;
-        for (User user : users) {
-            sendMsg(user, "Ролевка началась! Все появляются в нашем мире:");
-            if (user.getState() != User.State.ADMIN) {
-                moveUserToGroup(user, rooms.get(0));
-            }
+    private void sendKeyboard(User user) {
+        Keyboard keyboard = new Keyboard(user);
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(user.getChatId());
+        sendMessage.setText("Управление:");
+        sendMessage.setReplyMarkup(keyboard);
+        try {
+            execute(sendMessage);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void openInventory(User user) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(user.getChatId());
+        StringBuilder msg = new StringBuilder("Инвентарь \uD83C\uDF92:\n\n");
+        for (int i = 0; i < user.getInventory().size(); i++) {
+            msg.append(i + 1).append(". ").append(user.getInventory().get(i).getName());
+        }
+        sendMessage.setText(msg.toString());
+        try {
+            execute(sendMessage);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
         }
     }
 
@@ -191,6 +247,13 @@ public class Bot extends TelegramLongPollingBot {
                         user.makeReady();
                     }
                 }
+            } else if (state == State.PRESTARTED) {
+                if (user == null) {
+                    user = new User(username, chatId, userId);
+                    sendMsg(user, "Извини, но ролевка уже началась :( Возможно поучаствуешь в следующий раз!");
+                } else if (user.getState() == User.State.NOT_READY) {
+                    sendMsg(user, "Извини, но ролевка уже началась :( Возможно поучаствуешь в следующий раз!");
+                }
             } else {
                 if (user == null) {
                     user = new User(username, chatId, userId);
@@ -198,7 +261,7 @@ public class Bot extends TelegramLongPollingBot {
                 } else if (user.getState() == User.State.NOT_READY) {
                     sendMsg(user, "Извини, но ролевка уже началась :( Возможно поучаствуешь в следующий раз!");
                 } else {
-                    if (user.getState() == User.State.ADMIN) {
+                    if (user.getRole().getGroup() == Role.Group.ADMIN) {
                         if (message.isReply()) {
                             Message source = message.getReplyToMessage();
                             if (source.getForwardFrom() == null) {
@@ -228,5 +291,25 @@ public class Bot extends TelegramLongPollingBot {
                 }
             }
         }
+    }
+
+    private void handleIncomingCallbackQuery(CallbackQuery callbackQuery) {
+        DeleteMessage deleteMessage = new DeleteMessage();
+        deleteMessage.setChatId(callbackQuery.getMessage().getChatId().toString());
+        deleteMessage.setMessageId(callbackQuery.getMessage().getMessageId());
+        try {
+            execute(deleteMessage);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+
+        String data = callbackQuery.getData();
+        User user = users.findByName(callbackQuery.getFrom().getUserName());
+        assert user != null;
+        if (data.equals("openInventory")) {
+            openInventory(user);
+        }
+
+        sendKeyboard(user);
     }
 }
