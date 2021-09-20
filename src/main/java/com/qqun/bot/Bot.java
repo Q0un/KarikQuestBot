@@ -112,9 +112,11 @@ public class Bot extends TelegramLongPollingBot {
     public final void startQuest() {
         state = State.STARTED;
         for (User user : users) {
-            sendMsg(user, "Ролевка началась! Все появляются в нашем мире:");
-            user.init();
-            if (user.getRole().getGroup() != Role.Group.ADMIN) {
+            if (user.getRole().getGroup() == Role.Group.ADMIN) {
+                sendMsg(user, "Ролевка началась! Удачи тебе, надеюсь игроки ниче не сломают...)");
+            } else {
+                sendMsg(user, "Ролевка началась! Все появляются в нашем мире:");
+                user.init();
                 moveUserToGroup(user, rooms.get(0));
                 sendKeyboard(user);
             }
