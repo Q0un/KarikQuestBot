@@ -177,21 +177,20 @@ public class Bot extends TelegramLongPollingBot {
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
-        String message = "Проходи:\n" + getChatInviteLink(room);
-        sendMsg(user, message);
+        try {
+            String message = "Проходи:\n" + getChatInviteLink(room);
+            sendMsg(user, message);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
     }
 
-    private String getChatInviteLink(Room room) {
+    private String getChatInviteLink(Room room) throws TelegramApiException {
         CreateChatInviteLink createChatInviteLink = new CreateChatInviteLink();
         createChatInviteLink.setChatId(room.getChatId());
         createChatInviteLink.setMemberLimit(1);
-        try {
-            ChatInviteLink chatInviteLink = execute(createChatInviteLink);
-            return chatInviteLink.getInviteLink();
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-            return "";
-        }
+        ChatInviteLink chatInviteLink = execute(createChatInviteLink);
+        return chatInviteLink.getInviteLink();
     }
 
     private void sendKeyboard(User user) {
