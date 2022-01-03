@@ -236,14 +236,14 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    private void openInscribe(User user) {
+    private void sendInscribeSymbol(User user, String symbol) {
         SendPhoto sendPhoto = new SendPhoto();
         sendPhoto.setChatId(user.getChatId());
-        sendPhoto.setPhoto(new InputFile(new File("data/img/people.jpg")));
+        sendPhoto.setPhoto(new InputFile(new File("data/img/" + symbol + ".jpg")));
         InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
         InlineKeyboardButton inscribe = new InlineKeyboardButton();
         inscribe.setText("\uD83D\uDCDD");
-        inscribe.setCallbackData("inscribePeople");
+        inscribe.setCallbackData("inscribe" + symbol);
         List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
         List<InlineKeyboardButton> keyboardButtonsRow1 = new ArrayList<>();
         keyboardButtonsRow1.add(inscribe);
@@ -255,34 +255,12 @@ public class Bot extends TelegramLongPollingBot {
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
-        sendPhoto.setPhoto(new InputFile(new File("data/img/radiant.jpg")));
-        inlineKeyboardMarkup = new InlineKeyboardMarkup();
-        inscribe.setCallbackData("inscribeRadiant");
-        rowList = new ArrayList<>();
-        keyboardButtonsRow1 = new ArrayList<>();
-        keyboardButtonsRow1.add(inscribe);
-        rowList.add(keyboardButtonsRow1);
-        inlineKeyboardMarkup.setKeyboard(rowList);
-        sendPhoto.setReplyMarkup(inlineKeyboardMarkup);
-        try {
-            execute(sendPhoto);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
-        sendPhoto.setPhoto(new InputFile(new File("data/img/dead.jpg")));
-        inlineKeyboardMarkup = new InlineKeyboardMarkup();
-        inscribe.setCallbackData("inscribeDead");
-        rowList = new ArrayList<>();
-        keyboardButtonsRow1 = new ArrayList<>();
-        keyboardButtonsRow1.add(inscribe);
-        rowList.add(keyboardButtonsRow1);
-        inlineKeyboardMarkup.setKeyboard(rowList);
-        sendPhoto.setReplyMarkup(inlineKeyboardMarkup);
-        try {
-            execute(sendPhoto);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
+    }
+
+    private void openInscribe(User user) {
+        sendInscribeSymbol(user, "People");
+        sendInscribeSymbol(user, "Radiant");
+        sendInscribeSymbol(user, "Dead");
     }
 
     private void handleIncomingMessage(Message message) {
