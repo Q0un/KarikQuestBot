@@ -103,6 +103,7 @@ public class Bot extends TelegramLongPollingBot {
         User user = users.findByName(username);
         Room room = rooms.get(roomId);
         try {
+            assert user != null;
             moveUserToGroup(user, room);
         } catch (NullPointerException e) {
             e.printStackTrace();
@@ -177,6 +178,7 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     private void moveUserToGroup(User user, Room room) {
+        user.setRoom(room);
         for (Room roomId : rooms) {
             BanChatMember banChatMember = new BanChatMember();
             banChatMember.setChatId(roomId.getChatId());
@@ -266,6 +268,27 @@ public class Bot extends TelegramLongPollingBot {
         sendInscribeSymbol(user, "Dead");
     }
 
+    private void sendPortal(Room room, String symbol) {
+        SendPhoto sendPhoto = new SendPhoto();
+        sendPhoto.setChatId(room.getChatId());
+        sendPhoto.setPhoto(new InputFile(new File("data/img/" + symbol + ".jpg")));
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        InlineKeyboardButton inscribe = new InlineKeyboardButton();
+        inscribe.setText("\uD83D\uDD2E");
+        inscribe.setCallbackData("portal" + symbol);
+        List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
+        List<InlineKeyboardButton> keyboardButtonsRow1 = new ArrayList<>();
+        keyboardButtonsRow1.add(inscribe);
+        rowList.add(keyboardButtonsRow1);
+        inlineKeyboardMarkup.setKeyboard(rowList);
+        sendPhoto.setReplyMarkup(inlineKeyboardMarkup);
+        try {
+            execute(sendPhoto);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void handleIncomingMessage(Message message) {
         if (message.isUserMessage()) {
             String username = message.getFrom().getUserName();
@@ -350,10 +373,22 @@ public class Bot extends TelegramLongPollingBot {
         String data = callbackQuery.getData();
         User user = users.findByName(callbackQuery.getFrom().getUserName());
         assert user != null;
-        if (data.equals("openInventory")) {
-            openInventory(user);
-        } else if (data.equals("openInscribe")) {
-            openInscribe(user);
+        switch (data) {
+            case "openInventory":
+                openInventory(user);
+                break;
+            case "openInscribe":
+                openInscribe(user);
+                break;
+            case "inscribePeople":
+                sendPortal(user.getRoom(), "People");
+                break;
+            case "inscribeRadiant":
+                sendPortal(user.getRoom(), "Radiant");
+                break;
+            case "inscribeDead":
+                sendPortal(user.getRoom(), "Dead");
+                break;
         }
 
         sendKeyboard(user);

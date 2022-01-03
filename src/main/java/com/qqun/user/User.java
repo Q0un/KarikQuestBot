@@ -3,6 +3,7 @@ package com.qqun.user;
 import com.google.gson.annotations.SerializedName;
 import com.qqun.cooldown.Cooldown;
 import com.qqun.item.Item;
+import com.qqun.room.Room;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +19,7 @@ public class User {
     private final String chatId;
     private final long userId;
     private final Role role;
+    private Room room;
     private State state;
     private List<Item> inventory;
 
@@ -28,6 +30,7 @@ public class User {
         chatId = user.chatId;
         userId = user.userId;
         state = State.valueOf(user.state.name());
+        room = user.room;
         inventory = new ArrayList<>(user.inventory);
     }
 
@@ -48,6 +51,10 @@ public class User {
 
     public final void makeReady() {
         state = State.READY;
+    }
+
+    public final void setRoom(Room room) {
+        this.room = room;
     }
 
     public final String getUsername() {
@@ -76,5 +83,9 @@ public class User {
 
     public final Role getRole() {
         return role;
+    }
+
+    public final Room getRoom() {
+        return room;
     }
 }
