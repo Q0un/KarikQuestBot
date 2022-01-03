@@ -26,7 +26,7 @@ public class UserList extends ArrayList<User> {
 
     public final void save() {
         try {
-            Writer writer = new FileWriter("users.json");
+            Writer writer = new FileWriter("data/users.json");
             Gson gson = new Gson();
             UserList saving = new UserList();
             for (User user : this) {

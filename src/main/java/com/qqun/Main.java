@@ -26,6 +26,7 @@ public class Main {
                     case "stop":
                         bot.saveData();
                         System.exit(0);
+                        break;
                     case "startQuest":
                         bot.startQuest();
                         break;

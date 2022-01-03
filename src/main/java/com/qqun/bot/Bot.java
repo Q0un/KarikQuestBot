@@ -5,21 +5,25 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.qqun.bot.keyboard.Keyboard;
 import com.qqun.room.Room;
-import com.qqun.user.Role;
 import com.qqun.user.User;
 import com.qqun.user.UserList;
+import com.qqun.user.roles.Radiant;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.*;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.ChatInviteLink;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import javax.validation.constraints.Null;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -50,7 +54,7 @@ public class Bot extends TelegramLongPollingBot {
     private ArrayList<Room> loadRooms() {
         Gson gson = new Gson();
         try {
-            JsonReader reader = new JsonReader(new FileReader("rooms.json"));
+            JsonReader reader = new JsonReader(new FileReader("data/rooms.json"));
             return gson.fromJson(reader, new TypeToken<ArrayList<Room>>(){}.getType());
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -61,7 +65,7 @@ public class Bot extends TelegramLongPollingBot {
     private UserList loadUsers() {
         Gson gson = new Gson();
         try {
-            JsonReader reader = new JsonReader(new FileReader("users.json"));
+            JsonReader reader = new JsonReader(new FileReader("data/users.json"));
             return gson.fromJson(reader, new TypeToken<UserList>(){}.getType());
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -112,7 +116,7 @@ public class Bot extends TelegramLongPollingBot {
     public final void startQuest() {
         state = State.STARTED;
         for (User user : users) {
-            if (user.getRole().getGroup() == Role.Group.ADMIN) {
+            if (user.getTypeName().equals("com.qqun.user.roles.Admin")) {
                 sendMsg(user, "Ролевка началась! Удачи тебе, надеюсь игроки ниче не сломают...)");
             } else {
                 sendMsg(user, "Ролевка началась! Все появляются в нашем мире:");
@@ -128,11 +132,20 @@ public class Bot extends TelegramLongPollingBot {
         if (user == null) {
             throw new NullPointerException();
         }
-        try {
-            Role role = new Role(group, person);
-            user.setRole(role);
-        } catch (NullPointerException | IllegalArgumentException e) {
-            e.printStackTrace();
+        users.remove(user);
+        switch (group) {
+            case "Radiant":
+                users.add(new Radiant(user));
+                break;
+            case "Dead":
+
+                break;
+            case "Inscriber":
+
+                break;
+            case "Admin":
+
+                break;
         }
     }
 
@@ -223,6 +236,55 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
+    private void openInscribe(User user) {
+        SendPhoto sendPhoto = new SendPhoto();
+        sendPhoto.setChatId(user.getChatId());
+        sendPhoto.setPhoto(new InputFile(new File("data/img/people.jpg")));
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        InlineKeyboardButton inscribe = new InlineKeyboardButton();
+        inscribe.setText("\uD83D\uDCDD");
+        inscribe.setCallbackData("inscribePeople");
+        List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
+        List<InlineKeyboardButton> keyboardButtonsRow1 = new ArrayList<>();
+        keyboardButtonsRow1.add(inscribe);
+        rowList.add(keyboardButtonsRow1);
+        inlineKeyboardMarkup.setKeyboard(rowList);
+        sendPhoto.setReplyMarkup(inlineKeyboardMarkup);
+        try {
+            execute(sendPhoto);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+        sendPhoto.setPhoto(new InputFile(new File("data/img/radiant.jpg")));
+        inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        inscribe.setCallbackData("inscribeRadiant");
+        rowList = new ArrayList<>();
+        keyboardButtonsRow1 = new ArrayList<>();
+        keyboardButtonsRow1.add(inscribe);
+        rowList.add(keyboardButtonsRow1);
+        inlineKeyboardMarkup.setKeyboard(rowList);
+        sendPhoto.setReplyMarkup(inlineKeyboardMarkup);
+        try {
+            execute(sendPhoto);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+        sendPhoto.setPhoto(new InputFile(new File("data/img/dead.jpg")));
+        inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        inscribe.setCallbackData("inscribeDead");
+        rowList = new ArrayList<>();
+        keyboardButtonsRow1 = new ArrayList<>();
+        keyboardButtonsRow1.add(inscribe);
+        rowList.add(keyboardButtonsRow1);
+        inlineKeyboardMarkup.setKeyboard(rowList);
+        sendPhoto.setReplyMarkup(inlineKeyboardMarkup);
+        try {
+            execute(sendPhoto);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void handleIncomingMessage(Message message) {
         if (message.isUserMessage()) {
             String username = message.getFrom().getUserName();
@@ -262,7 +324,7 @@ public class Bot extends TelegramLongPollingBot {
                 } else if (user.getState() == User.State.NOT_READY) {
                     sendMsg(user, "Извини, но ролевка уже началась :( Возможно поучаствуешь в следующий раз!");
                 } else {
-                    if (user.getRole().getGroup() == Role.Group.ADMIN) {
+                    if (user.getRole() == User.Role.Admin) {
                         if (message.isReply()) {
                             Message source = message.getReplyToMessage();
                             if (source.getForwardFrom() == null) {
@@ -309,6 +371,8 @@ public class Bot extends TelegramLongPollingBot {
         assert user != null;
         if (data.equals("openInventory")) {
             openInventory(user);
+        } else if (data.equals("openInscribe")) {
+            openInscribe(user);
         }
 
         sendKeyboard(user);

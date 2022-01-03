@@ -1,5 +1,7 @@
 package com.qqun.user;
 
+import com.google.gson.annotations.SerializedName;
+import com.qqun.cooldown.Cooldown;
 import com.qqun.item.Item;
 
 import java.util.ArrayList;
@@ -7,15 +9,32 @@ import java.util.List;
 
 public class User {
     public enum State {NEW_USER, NOT_READY, READY}
+    public enum Role {User, Radiant, Dead, Inscriber, Admin}
+
+    @SerializedName("type")
+    private final String typeName;
 
     private final String username;
     private final String chatId;
     private final long userId;
-    private Role role;
+    private final Role role;
     private State state;
     private List<Item> inventory;
 
+    public User(User user) {
+        typeName = user.typeName;
+        role = user.role;
+        username = user.username;
+        chatId = user.chatId;
+        userId = user.userId;
+        state = State.valueOf(user.state.name());
+        inventory = new ArrayList<>(user.inventory);
+    }
+
     public User(String username, String chatId, long userId) {
+        typeName = getClass().getName();
+
+        this.role = Role.valueOf(getClass().getSimpleName());
         this.username = username;
         this.chatId = chatId;
         this.userId = userId;
@@ -29,10 +48,6 @@ public class User {
 
     public final void makeReady() {
         state = State.READY;
-    }
-
-    public final void setRole(Role role) {
-        this.role = role;
     }
 
     public final String getUsername() {
@@ -51,11 +66,15 @@ public class User {
         return userId;
     }
 
-    public final Role getRole() {
-        return role;
-    }
-
     public final List<Item> getInventory() {
         return inventory;
+    }
+
+    public final String getTypeName() {
+        return typeName;
+    }
+
+    public final Role getRole() {
+        return role;
     }
 }
