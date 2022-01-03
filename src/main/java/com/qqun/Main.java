@@ -5,7 +5,6 @@ import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
-import javax.validation.constraints.Null;
 import java.util.Scanner;
 
 public class Main {
@@ -41,7 +40,7 @@ public class Main {
                     case "setRole":
                         username = scanner.next();
                         String group = scanner.next();
-                        int person = scanner.nextInt();
+                        String person = scanner.next();
                         try {
                             bot.setRole(username, group, person);
                         } catch (NullPointerException e) {

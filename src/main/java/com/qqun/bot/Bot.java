@@ -7,7 +7,10 @@ import com.qqun.bot.keyboard.Keyboard;
 import com.qqun.room.Room;
 import com.qqun.user.User;
 import com.qqun.user.UserList;
+import com.qqun.user.roles.Dead;
+import com.qqun.user.roles.Inscriber;
 import com.qqun.user.roles.Radiant;
+import com.qqun.user.roles.Admin;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.*;
@@ -127,7 +130,7 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    public final void setRole(String username, String group, int person) throws NullPointerException {
+    public final void setRole(String username, String group, String person) throws NullPointerException {
         User user = users.findByName(username);
         if (user == null) {
             throw new NullPointerException();
@@ -135,16 +138,16 @@ public class Bot extends TelegramLongPollingBot {
         users.remove(user);
         switch (group) {
             case "Radiant":
-                users.add(new Radiant(user));
+                users.add(new Radiant(user, person));
                 break;
             case "Dead":
-
+                users.add(new Dead(user, person));
                 break;
             case "Inscriber":
-
+                users.add(new Inscriber(user, person));
                 break;
             case "Admin":
-
+                users.add(new Admin(user));
                 break;
         }
     }
